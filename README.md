@@ -30,16 +30,19 @@
 #### Installing Dependencies
 
 **Debian/Ubuntu:**
+
 ```bash
 sudo apt install inotify-tools
 ```
 
 **RHEL/CentOS/Fedora:**
+
 ```bash
 sudo yum install inotify-tools
 ```
 
 **Arch Linux:**
+
 ```bash
 sudo pacman -S inotify-tools
 ```
@@ -117,20 +120,20 @@ APP_ARGS="--port 8080"
 
 #### Available Commands
 
-| Command | Description |
-|---------|-------------|
-| `list` | List all configured services |
-| `config <name>` | Create or edit service configuration |
-| `start <name\|all>` | Start service(s) |
-| `stop <name\|all>` | Stop service(s) |
-| `restart <name\|all>` | Restart service(s) |
-| `restart-app <name\|all>` | Restart only the application (keep monitors) |
-| `restart-monitor <name\|all>` | Restart only monitors (health/watcher) |
-| `status <name\|all>` | Show service status |
-| `log <name>` | View service logs (tail -f) |
-| `log-rotate <name\|all>` | Rotate and clean old logs |
-| `clean <name\|all>` | Clean state files |
-| `del <name>` | Delete service configuration |
+| Command                       | Description                                  |
+| ----------------------------- | -------------------------------------------- |
+| `list`                        | List all configured services                 |
+| `config <name>`               | Create or edit service configuration         |
+| `start <name\|all>`           | Start service(s)                             |
+| `stop <name\|all>`            | Stop service(s)                              |
+| `restart <name\|all>`         | Restart service(s)                           |
+| `restart-app <name\|all>`     | Restart only the application (keep monitors) |
+| `restart-monitor <name\|all>` | Restart only monitors (health/watcher)       |
+| `status <name\|all>`          | Show service status                          |
+| `log <name>`                  | View service logs (tail -f)                  |
+| `log-rotate <name\|all>`      | Rotate and clean old logs                    |
+| `clean <name\|all>`           | Clean state files                            |
+| `del <name>`                  | Delete service configuration                 |
 
 ### Configuration Options
 
@@ -255,16 +258,19 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 #### 安裝依賴
 
 **Debian/Ubuntu:**
+
 ```bash
 sudo apt install inotify-tools
 ```
 
 **RHEL/CentOS/Fedora:**
+
 ```bash
 sudo yum install inotify-tools
 ```
 
 **Arch Linux:**
+
 ```bash
 sudo pacman -S inotify-tools
 ```
@@ -342,20 +348,20 @@ APP_ARGS="--port 8080"
 
 #### 可用命令
 
-| 命令 | 說明 |
-|------|------|
-| `list` | 列出所有已配置的服務 |
-| `config <名稱>` | 創建或編輯服務配置 |
-| `start <名稱\|all>` | 啟動服務 |
-| `stop <名稱\|all>` | 停止服務 |
-| `restart <名稱\|all>` | 重啟服務 |
-| `restart-app <名稱\|all>` | 僅重啟應用程序（保持監控） |
+| 命令                          | 說明                            |
+| ----------------------------- | ------------------------------- |
+| `list`                        | 列出所有已配置的服務            |
+| `config <名稱>`               | 創建或編輯服務配置              |
+| `start <名稱\|all>`           | 啟動服務                        |
+| `stop <名稱\|all>`            | 停止服務                        |
+| `restart <名稱\|all>`         | 重啟服務                        |
+| `restart-app <名稱\|all>`     | 僅重啟應用程序（保持監控）      |
 | `restart-monitor <名稱\|all>` | 僅重啟監控（健康檢查/文件監視） |
-| `status <名稱\|all>` | 顯示服務狀態 |
-| `log <名稱>` | 查看服務日誌（tail -f） |
-| `log-rotate <名稱\|all>` | 輪替和清理舊日誌 |
-| `clean <名稱\|all>` | 清理狀態文件 |
-| `del <名稱>` | 刪除服務配置 |
+| `status <名稱\|all>`          | 顯示服務狀態                    |
+| `log <名稱>`                  | 查看服務日誌（tail -f）         |
+| `log-rotate <名稱\|all>`      | 輪替和清理舊日誌                |
+| `clean <名稱\|all>`           | 清理狀態文件                    |
+| `del <名稱>`                  | 刪除服務配置                    |
 
 ### 配置選項
 

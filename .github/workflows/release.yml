@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
 
 permissions:
   contents: write
@@ -23,21 +23,21 @@ jobs:
       - name: Create release archive
         run: |
           VERSION="${{ steps.extract_version.outputs.VERSION }}"
-          ARCHIVE_NAME="wappman-${VERSION}.tar.gz"
-          
+          ARCHIVE_NAME="wappman-linux-${VERSION}.tar.gz"
+
           # Create a temporary directory for the archive
           mkdir -p "/tmp/wappman-${VERSION}"
-          
+
           # Copy files to the temporary directory
           cp -r wappman lib README.md CHANGELOG.md LICENSE "/tmp/wappman-${VERSION}/" || true
-          
+
           # Create the archive
           cd /tmp
           tar -czf "${ARCHIVE_NAME}" "wappman-${VERSION}"
-          
+
           # Move archive to workspace
           mv "${ARCHIVE_NAME}" "${GITHUB_WORKSPACE}/"
-          
+
           echo "ARCHIVE_NAME=${ARCHIVE_NAME}" >> $GITHUB_ENV
 
       - name: Generate SHA256 checksum
