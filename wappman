@@ -1,0 +1,297 @@
+#!/bin/bash
+# wappman - Universal service start/stop manager with monitoring capabilities
+#
+# Manages multiple service lifecycles (start/stop/restart) with optional
+# health checking (periodic process monitoring) and file watching
+# (auto-restart on file changes). Pure script solution.
+#
+# Usage:
+#   ./wappman <command> <SERVICE_NAME|all>
+#   ./wappman list                - List configured services
+#   ./wappman config <name>       - Create/edit service config
+#   ./wappman start <name|all>    - Start service(s)
+#   ./wappman stop <name|all>     - Stop service(s)
+#   ./wappman status <name|all>   - Show service status
+#
+# Requires: inotifywait (inotify-tools) - only if file watching is enabled
+
+set -euo pipefail
+
+# ============================================================================
+# Path Resolution & Module Loading
+# ============================================================================
+
+# Resolve SCRIPT_DIR to the real location of the main script (follows symlinks)
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")")" && pwd)"
+LIB_DIR="$SCRIPT_DIR/lib"
+
+# Config directory
+CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/wappman"
+
+# Will be set after SERVICE_NAME is resolved
+CONF=""
+SERVICE_NAME=""
+
+# Verify lib directory exists
+if [ ! -d "$LIB_DIR" ]; then
+  echo "ERROR: Module directory not found: $LIB_DIR"
+  echo "Expected directory structure:"
+  echo "  $SCRIPT_DIR/"
+  echo "  ├── wappman          (this script)"
+  echo "  └── lib/"
+  echo "      ├── log.sh       (logging)"
+  echo "      ├── state.sh     (state management)"
+  echo "      ├── config.sh    (configuration)"
+  echo "      ├── hooks.sh     (post-start/crash hooks)"
+  echo "      ├── status.sh    (status utilities)"
+  echo "      ├── health.sh    (health checker)"
+  echo "      ├── watcher.sh   (file watcher)"
+  echo "      ├── app.sh       (app lifecycle)"
+  echo "      └── commands.sh  (CLI commands)"
+  exit 1
+fi
+
+# Source modules in dependency order
+# 1. log.sh      - no deps
+# 2. state.sh    - no deps
+# 3. config.sh   - depends on: log
+# 4. hooks.sh    - depends on: log
+# 5. status.sh   - depends on: state
+# 6. health.sh   - depends on: log, state, app (functions resolved at call time)
+# 7. watcher.sh  - depends on: log, state, app (functions resolved at call time)
+# 8. app.sh      - depends on: log, state, hooks, health, watcher
+# 9. commands.sh - depends on: all above
+for _module in log state config hooks status health watcher app commands; do
+  _module_path="$LIB_DIR/${_module}.sh"
+  if [ ! -f "$_module_path" ]; then
+    echo "ERROR: Required module not found: $_module_path"
+    exit 1
+  fi
+  # shellcheck source=/dev/null
+  source "$_module_path"
+done
+unset _module _module_path
+
+# ============================================================================
+# Service Name Utilities
+# ============================================================================
+
+# Validate service name: only [a-zA-Z0-9_-]
+validate_service_name() {
+  local name="$1"
+  if [[ ! "$name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    echo "ERROR: Invalid service name: '$name'"
+    echo "Service names may only contain letters, digits, hyphens and underscores."
+    exit 1
+  fi
+}
+
+# List all configured service names
+list_services() {
+  local services=()
+  for f in "$CONF_DIR"/*.conf; do
+    [ -f "$f" ] || continue
+    services+=("$(basename "$f" .conf)")
+  done
+  printf '%s\n' "${services[@]}"
+}
+
+# Prompt user to choose a service name interactively
+prompt_service_name() {
+  local allow_new="${1:-false}"
+  local services=()
+  while IFS= read -r svc; do
+    [ -n "$svc" ] && services+=("$svc")
+  done < <(list_services)
+
+  if [ "${#services[@]}" -eq 0 ] && [ "$allow_new" != "true" ]; then
+    echo "ERROR: No services configured."
+    echo "Use '$0 config <SERVICE_NAME>' to create a new service configuration."
+    exit 1
+  fi
+
+  echo "Available services:"
+  for svc in "${services[@]}"; do
+    echo "  - $svc"
+  done
+  if [ "$allow_new" = "true" ]; then
+    echo "  (or enter a new service name to create its configuration)"
+  fi
+  echo ""
+  read -p "Enter service name (or 'all'): " SERVICE_NAME
+
+  if [ -z "$SERVICE_NAME" ]; then
+    echo "ERROR: No service name provided."
+    exit 1
+  fi
+}
+
+# Set CONF path from SERVICE_NAME
+resolve_conf() {
+  CONF="$CONF_DIR/${SERVICE_NAME}.conf"
+}
+
+# Execute a cmd function for all services sequentially
+execute_for_all() {
+  local cmd_func="$1"
+  local services=()
+  while IFS= read -r svc; do
+    [ -n "$svc" ] && services+=("$svc")
+  done < <(list_services)
+
+  if [ "${#services[@]}" -eq 0 ]; then
+    echo "ERROR: No services configured."
+    exit 1
+  fi
+
+  local failed=0
+  for svc in "${services[@]}"; do
+    echo ""
+    echo "═══ $svc ═══"
+    SERVICE_NAME="$svc"
+    resolve_conf
+    if load_config; then
+      "$cmd_func" || { echo "WARNING: $cmd_func failed for $svc"; failed=$((failed + 1)); }
+    else
+      echo "WARNING: Failed to load config for $svc"
+      failed=$((failed + 1))
+    fi
+  done
+
+  if [ "$failed" -gt 0 ]; then
+    echo ""
+    echo "WARNING: $failed service(s) had errors."
+    return 1
+  fi
+  return 0
+}
+
+# ============================================================================
+# Main Entry Point
+# ============================================================================
+
+main() {
+  local command="${1:-}"
+  local target="${2:-}"
+
+  if [ -z "$command" ]; then
+    show_usage
+    exit 1
+  fi
+
+  # Commands that don't require SERVICE_NAME
+  case "$command" in
+    list)
+      cmd_list
+      exit 0
+      ;;
+  esac
+
+  # Validate command name early
+  local valid_commands="config start stop restart restart-app restart-monitor status log log-rotate clean del"
+  local is_valid_cmd=false
+  for c in $valid_commands; do
+    [ "$command" = "$c" ] && is_valid_cmd=true && break
+  done
+  if ! $is_valid_cmd; then
+    echo "ERROR: Unknown command: $command"
+    echo ""
+    show_usage
+    exit 1
+  fi
+
+  # Commands that support "all"
+  local supports_all=false
+  case "$command" in
+    start|stop|restart|restart-app|restart-monitor|clean|status|log-rotate)
+      supports_all=true
+      ;;
+  esac
+
+  # If no target provided, prompt interactively
+  if [ -z "$target" ]; then
+    if [ ! -t 0 ]; then
+      echo "ERROR: No SERVICE_NAME provided and not running interactively."
+      echo "Usage: $0 $command <SERVICE_NAME|all>"
+      exit 1
+    fi
+    local allow_new="false"
+    [ "$command" = "config" ] && allow_new="true"
+    prompt_service_name "$allow_new"
+    target="$SERVICE_NAME"
+  fi
+
+  # Handle "all" for supported commands
+  if [ "$target" = "all" ]; then
+    if [ "$command" = "config" ]; then
+      echo "ERROR: 'all' is not valid for the config command."
+      exit 1
+    fi
+    if [ "$command" = "log" ]; then
+      echo "ERROR: 'all' is not valid for the log command."
+      exit 1
+    fi
+    if [ "$command" = "log-rotate" ]; then
+      # log-rotate supports all, handle below
+      :
+    fi
+    if ! $supports_all; then
+      echo "ERROR: '$command' does not support 'all'."
+      exit 1
+    fi
+
+    # Special handling for status all
+    if [ "$command" = "status" ]; then
+      cmd_status_all
+      exit 0
+    fi
+
+    local cmd_func
+    case "$command" in
+      start)           cmd_func="cmd_start" ;;
+      stop)            cmd_func="cmd_stop" ;;
+      restart)         cmd_func="cmd_restart" ;;
+      restart-app)     cmd_func="cmd_restart_app" ;;
+      restart-monitor) cmd_func="cmd_restart_monitor" ;;
+      clean)           cmd_func="cmd_clean" ;;
+      log-rotate)      cmd_func="cmd_log_rotate" ;;
+    esac
+    execute_for_all "$cmd_func"
+    exit $?
+  fi
+
+  # Single service operation
+  SERVICE_NAME="$target"
+  validate_service_name "$SERVICE_NAME"
+  resolve_conf
+
+  # config command: create if needed, then open editor
+  if [ "$command" = "config" ]; then
+    cmd_config
+    exit 0
+  fi
+
+  # All other commands require existing config
+  if [ ! -f "$CONF" ]; then
+    echo "ERROR: Configuration not found for service '$SERVICE_NAME': $CONF"
+    echo "Use '$0 config $SERVICE_NAME' to create it."
+    exit 1
+  fi
+
+  load_config
+
+  case "$command" in
+    start)          cmd_start ;;
+    stop)           cmd_stop ;;
+    restart)        cmd_restart ;;
+    restart-app)    cmd_restart_app ;;
+    restart-monitor) cmd_restart_monitor ;;
+    status)         cmd_status ;;
+    log)            cmd_log ;;
+    log-rotate)     cmd_log_rotate ;;
+    clean)          cmd_clean ;;
+    del)            cmd_del ;;
+  esac
+}
+
+main "$@"

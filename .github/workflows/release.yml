@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: extract_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create release archive
+        run: |
+          VERSION="${{ steps.extract_version.outputs.VERSION }}"
+          ARCHIVE_NAME="wappman-${VERSION}.tar.gz"
+          
+          # Create a temporary directory for the archive
+          mkdir -p "/tmp/wappman-${VERSION}"
+          
+          # Copy files to the temporary directory
+          cp -r wappman lib README.md CHANGELOG.md LICENSE "/tmp/wappman-${VERSION}/" || true
+          
+          # Create the archive
+          cd /tmp
+          tar -czf "${ARCHIVE_NAME}" "wappman-${VERSION}"
+          
+          # Move archive to workspace
+          mv "${ARCHIVE_NAME}" "${GITHUB_WORKSPACE}/"
+          
+          echo "ARCHIVE_NAME=${ARCHIVE_NAME}" >> $GITHUB_ENV
+
+      - name: Generate SHA256 checksum
+        run: |
+          sha256sum "${ARCHIVE_NAME}" > "${ARCHIVE_NAME}.sha256"
+
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          VERSION="${{ steps.extract_version.outputs.VERSION }}"
+          # Extract the changelog section for this version
+          sed -n "/## \[${VERSION#v}\]/,/## \[/p" CHANGELOG.md | sed '$d' > release_notes.md || echo "Release ${VERSION}" > release_notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: release_notes.md
+          files: |
+            ${{ env.ARCHIVE_NAME }}
+            ${{ env.ARCHIVE_NAME }}.sha256
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            ${{ env.ARCHIVE_NAME }}
+            ${{ env.ARCHIVE_NAME }}.sha256
