@@ -31,6 +31,7 @@ load_config() {
   SUCCESS_CHECK_DELAY="${SUCCESS_CHECK_DELAY:-${RESTART_DELAY}}"
   CRASH_RESTART_MAX="${CRASH_RESTART_MAX:-0}"
   CRASH_COMMAND="${CRASH_COMMAND:-}"
+  RESTART_COMMAND="${RESTART_COMMAND:-}"
   LOG_RETAIN_DAYS="${LOG_RETAIN_DAYS:-7}"
   
   # Convert relative paths to absolute
@@ -78,7 +79,7 @@ APP_LOG_FILE="\${XDG_STATE_HOME:-\$HOME/.local/state}/wappman/logs/app_${SERVICE
 # ===================================================================
 
 # 健康檢查間隔 (秒)，0 表示停用健康檢查
-HEALTH_CHECK_INTERVAL=1200
+HEALTH_CHECK_INTERVAL=120
 
 # ===================================================================
 # 檔案監控(inotify)設定
@@ -103,9 +104,16 @@ RESTART_DELAY=10
 
 # 重啟最小間隔 (秒)，防止短時間內重複重啟
 RESTART_MIN_INTERVAL=10
-
+e
 # 停止超時時間 (秒)，超時後強制終止
 STOP_TIMEOUT=10
+
+# 應用程式重啟前執行的命令 (選填，留空表示不執行)
+# 此命令會在每次重啟（包括手動重啟、健康檢查重啟、文件變更重啟）前執行
+# 可用於執行備份、發送通知、清理資源等操作
+# 範例: RESTART_COMMAND='./pre-restart-backup.sh'
+# 環境變數可用: WAPPMAN_EVENT_TIMESTAMP, WAPPMAN_EVENT_TYPE, WAPPMAN_EVENT_TRIGGER
+RESTART_COMMAND=""
 
 # ===================================================================
 # 失敗重啟驗證設定

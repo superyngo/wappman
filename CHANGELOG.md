@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-02-11
+
+### Added
+
+- **RESTART_COMMAND**: 新增可在應用程式重啟前執行的自定義命令
+  - 支援所有重啟場景（手動重啟、健康檢查重啟、文件變更重啟）
+  - 可用於備份、通知、資源清理等操作
+  - 執行失敗不影響重啟流程（僅記錄警告）
+  - 支援 timeout 防止卡住
+
+- **EVENT_INFO**: 統一的事件資訊環境變數機制
+  - 所有 hook 命令（SUCCESS_CHECK_COMMAND、CRASH_COMMAND、RESTART_COMMAND）現在都可以存取事件上下文
+  - 新增環境變數：
+    - `WAPPMAN_EVENT_TIMESTAMP`: 事件時間戳
+    - `WAPPMAN_EVENT_TIMESTAMP_UNIX`: Unix 時間戳
+    - `WAPPMAN_EVENT_TYPE`: 事件類型（start, restart, success_check, crash）
+    - `WAPPMAN_EVENT_TRIGGER`: 觸發原因（manual, health_check, file_change 等）
+    - `WAPPMAN_SERVICE_NAME`: 服務名稱
+    - `WAPPMAN_APP_EXEC`: 應用程式路徑
+    - `WAPPMAN_STATE_DIR`: 狀態目錄
+    - `WAPPMAN_MANAGER_LOG`: Manager 日誌路徑
+
+### Changed
+
+- SUCCESS_CHECK_COMMAND 現在接收觸發原因參數，提供更豐富的上下文資訊
+- CRASH_COMMAND 除了原有的 `WAPPMAN_CRASH_REASON` 和 `WAPPMAN_CRASH_COUNT`，現在也包含完整的事件資訊
+
+### Improved
+
+- 更好的可觀測性：所有 hook 執行時都有完整的事件上下文
+- 更靈活的自定義操作：可在重啟流程的不同階段執行自定義邏輯
+
+## [1.0.2] - 2026-02-10
+
 ### Added
 
 - Initial release of wappman
@@ -77,5 +111,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - English and Traditional Chinese documentation
 - MIT License
 
-[Unreleased]: https://github.com/superyngo/wappman/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/superyngo/wappman/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/superyngo/wappman/compare/v1.0.2...v1.0.3
+[1.0.2]: https://github.com/superyngo/wappman/compare/v1.0.0...v1.0.2
 [1.0.0]: https://github.com/superyngo/wappman/releases/tag/v1.0.0

@@ -2,6 +2,6 @@
 set -Eeuo pipefail
 
 while true; do
-  echo 123
+  echo 123456
   sleep 20
 done

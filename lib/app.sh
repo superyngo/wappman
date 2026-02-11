@@ -100,7 +100,8 @@ handle_failed_app_start() {
     log "failure-restart: app process started (pid=$app_pid)"
     
     # Execute post-start verification (success check)
-    if ! execute_post_start_command; then
+    # Pass the original reason as the trigger for the success check
+    if ! execute_post_start_command "${reason}_restart_attempt"; then
       log "failure-restart: post-start verification failed on attempt $crash_count"
       write_state app "STATUS=crashed" "CRASH_RESTART_COUNT=$crash_count"
       continue
@@ -186,7 +187,7 @@ start_app() {
   log "app started successfully (pid=$app_pid)"
   
   # 執行啟動後驗證命令
-  if ! execute_post_start_command; then
+  if ! execute_post_start_command "initial_start"; then
     log "ERROR: post-start verification failed, marking app as crashed"
     write_state app "STATUS=crashed" "CRASH_RESTART_COUNT=1"
     execute_crash_command "post_start_verification_failed" "1"
@@ -241,6 +242,9 @@ stop_app() {
 
 restart_app() {
   local reason="${1:-manual}"
+  
+  # Execute restart command hook before restarting
+  execute_restart_command "$reason"
   
   # Check debounce
   local last_start
