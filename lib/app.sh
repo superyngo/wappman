@@ -12,10 +12,9 @@
 #             CRASH_RESTART_MAX, HEALTH_CHECK_INTERVAL (globals)
 
 get_args_array() {
-  local -n __out="$1"
-  __out=()
+  eval "$1=()"
   if [ -n "${APP_ARGS:-}" ]; then
-    eval "__out=($APP_ARGS)"
+    eval "$1=($APP_ARGS)"
   fi
 }
 
