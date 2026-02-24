@@ -45,7 +45,7 @@ write_state() {
     local value="${pair#*=}"
     
     if grep -q "^${key}=" "$temp_file" 2>/dev/null; then
-      sed -i "s|^${key}=.*|${key}=${value}|" "$temp_file"
+      sed "s|^${key}=.*|${key}=${value}|" "$temp_file" > "${temp_file}.2" && mv "${temp_file}.2" "$temp_file"
     else
       echo "${key}=${value}" >> "$temp_file"
     fi
