@@ -104,7 +104,7 @@ RESTART_DELAY=10
 
 # 重啟最小間隔 (秒)，防止短時間內重複重啟
 RESTART_MIN_INTERVAL=10
-e
+
 # 停止超時時間 (秒)，超時後強制終止
 STOP_TIMEOUT=10
 
