@@ -49,7 +49,13 @@ sudo pacman -S inotify-tools
 
 ### Installation
 
-#### Method 1: Clone Repository
+#### Method 1: Wenget
+
+```bash
+wenget install wappman
+```
+
+#### Method 2: Clone Repository
 
 ```bash
 git clone https://github.com/superyngo/wappman.git
@@ -57,7 +63,7 @@ cd wappman
 chmod +x wappman
 ```
 
-#### Method 2: Download Release
+#### Method 3: Download Release
 
 Download the latest release from the [Releases](https://github.com/superyngo/wappman/releases) page and extract it:
 
@@ -277,7 +283,13 @@ sudo pacman -S inotify-tools
 
 ### 安裝方式
 
-#### 方法一：克隆倉庫
+#### 方法一：Wenget
+
+```bash
+wenget install wappman
+```
+
+#### 方法二：克隆倉庫
 
 ```bash
 git clone https://github.com/superyngo/wappman.git
@@ -285,7 +297,7 @@ cd wappman
 chmod +x wappman
 ```
 
-#### 方法二：下載發布版本
+#### 方法三：下載發布版本
 
 從 [Releases](https://github.com/superyngo/wappman/releases) 頁面下載最新版本並解壓：
 
